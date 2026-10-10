@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Celestial Coordinate Converter — Alt/Az ↔ RA/Dec</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen font-mono">
+  <div class="max-w-3xl mx-auto p-4">
+    <header class="mb-6">
+      <h1 class="text-2xl font-bold text-indigo-400">Celestial Coordinate Converter</h1>
+      <p class="text-gray-400 text-sm mt-1">Alt/Az (Horizontal) ↔ RA/Dec (Equatorial) using spherical trigonometry</p>
+    </header>
+
+    <!-- Observer location & time -->
+    <section class="bg-gray-900 rounded-xl border border-gray-800 p-4 mb-4" aria-labelledby="observer-heading">
+      <h2 id="observer-heading" class="text-sm font-semibold text-gray-300 uppercase tracking-wide mb-3">Observer Location &amp; Time (UTC)</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div>
+          <label for="lat" class="block text-xs text-gray-500 mb-1">Latitude (°N +, S −)</label>
+          <input id="lat" type="number" step="0.0001" min="-90" max="90" value="35.6895"
+            class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+            aria-label="Observer latitude in degrees" />
+        </div>
+        <div>
+          <label for="lon" class="block text-xs text-gray-500 mb-1">Longitude (°E +, W −)</label>
+          <input id="lon" type="number" step="0.0001" min="-180" max="180" value="139.6917"
+            class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+            aria-label="Observer longitude in degrees" />
+        </div>
+        <div>
+          <label for="utc-dt" class="block text-xs text-gray-500 mb-1">UTC Date &amp; Time</label>
+          <input id="utc-dt" type="datetime-local" value="2026-10-11T12:00"
+            class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+            aria-label="UTC date and time" />
+        </div>
+      </div>
+    </section>
+
+    <!-- Mode selector -->
+    <div class="flex gap-2 mb-4" role="radiogroup" aria-label="Conversion mode">
+      <button id="mode-altaz" class="flex-1 py-2 rounded-lg font-semibold text-sm transition bg-indigo-700 text-white border-2 border-indigo-400" aria-pressed="true">
+        Alt/Az → RA/Dec
+      </button>
+      <button id="mode-radec" class="flex-1 py-2 rounded-lg font-semibold text-sm transition bg-gray-800 text-gray-300 border-2 border-gray-700" aria-pressed="false">
+        RA/Dec → Alt/Az
+      </button>
+    </div>
+
+    <!-- Input panels -->
+    <section id="panel-altaz" class="bg-gray-900 rounded-xl border border-gray-800 p-4 mb-4" aria-labelledby="altaz-heading">
+      <h2 id="altaz-heading" class="text-sm font-semibold text-gray-300 uppercase tracking-wide mb-3">Horizontal Coordinates (Input)</h2>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label for="alt" class="block text-xs text-gray-500 mb-1">Altitude (°, −90 to +90)</label>
+          <input id="alt" type="number" step="0.001" min="-90" max="90" value="45.0"
+            class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+            aria-label="Altitude in degrees" />
+        </div>
+        <div>
+          <label for="az" class="block text-xs text-gray-500 mb-1">Azimuth (°, 0=N, 90=E)</label>
+          <input id="az" type="number" step="0.001" min="0" max="360" value="180.0"
+            class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+            aria-label="Azimuth in degrees" />
+        </div>
+      </div>
+    </section>
+
+    <section id="panel-radec" class="hidden bg-gray-900 rounded-xl border border-gray-800 p-4 mb-4" aria-labelledby="radec-heading">
+      <h2 id="radec-heading" class="text-sm font-semibold text-gray-300 uppercase tracking-wide mb-3">Equatorial Coordinates (Input)</h2>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label for="ra" class="block text-xs text-gray-500 mb-1">Right Ascension (hours, 0–24)</label>
+          <input id="ra" type="number" step="0.0001" min="0" max="24" value="5.5755"
+            class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+            aria-label="Right ascension in hours" />
+        </div>
+        <div>
+          <label for="dec" class="block text-xs text-gray-500 mb-1">Declination (°, −90 to +90)</label>
+          <input id="dec" type="number" step="0.0001" min="-90" max="90" value="-5.3911"
+            class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+            aria-label="Declination in degrees" />
+        </div>
+      </div>
+    </section>
+
+    <!-- Convert button -->
+    <button id="btn-convert"
+      class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-semibold transition mb-4"
+      aria-label="Convert coordinates">
+      Convert
+    </button>
+
+    <!-- Results -->
+    <section id="results" class="bg-gray-900 rounded-xl border border-gray-800 p-4 mb-4" aria-live="polite" aria-label="Conversion results">
+      <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wide mb-3">Results</h2>
+      <div id="error-msg" class="hidden text-red-400 text-sm mb-2" role="alert"></div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3" id="result-grid">
+        <div class="bg-gray-800 rounded-lg p-3">
+          <div class="text-xs text-gray-500 mb-1">Local Sidereal Time (LST)</div>
+          <div id="res-lst" class="text-lg font-bold text-indigo-300">—</div>
+        </div>
+        <div class="bg-gray-800 rounded-lg p-3">
+          <div class="text-xs text-gray-500 mb-1">Hour Angle H (hours)</div>
+          <div id="res-ha" class="text-lg font-bold text-cyan-300">—</div>
+        </div>
+        <div class="bg-gray-800 rounded-lg p-3">
+          <div class="text-xs text-gray-500 mb-1">Right Ascension (hours)</div>
+          <div id="res-ra" class="text-lg font-bold text-emerald-300">—</div>
+        </div>
+        <div class="bg-gray-800 rounded-lg p-3">
+          <div class="text-xs text-gray-500 mb-1">Declination (°)</div>
+          <div id="res-dec" class="text-lg font-bold text-emerald-300">—</div>
+        </div>
+        <div class="bg-gray-800 rounded-lg p-3">
+          <div class="text-xs text-gray-500 mb-1">Altitude (°)</div>
+          <div id="res-alt" class="text-lg font-bold text-amber-300">—</div>
+        </div>
+        <div class="bg-gray-800 rounded-lg p-3">
+          <div class="text-xs text-gray-500 mb-1">Azimuth (°)</div>
+          <div id="res-az" class="text-lg font-bold text-amber-300">—</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Formula explanation -->
+    <details class="bg-gray-900 border border-gray-800 rounded-xl p-4 text-sm text-gray-400">
+      <summary class="cursor-pointer text-gray-300 font-semibold">Formula Reference</summary>
+      <div class="mt-3 space-y-1">
+        <p><strong class="text-gray-200">GMST</strong> = 6.697375 + 2400.0513368 × T + 0.0000258622 × T² (hours)</p>
+        <p><strong class="text-gray-200">LST</strong> = GMST + longitude/15 (mod 24 h)</p>
+        <p><strong class="text-gray-200">H</strong> = LST − RA (hour angle, hours)</p>
+        <p><strong class="text-gray-200">Alt/Az → Dec</strong>: sin δ = sin φ sin a + cos φ cos a cos A</p>
+        <p><strong class="text-gray-200">Alt/Az → H</strong>: cos H = (sin a − sin φ sin δ) / (cos φ cos δ)</p>
+        <p><strong class="text-gray-200">RA/Dec → Alt</strong>: sin a = sin φ sin δ + cos φ cos δ cos H</p>
+        <p><strong class="text-gray-200">RA/Dec → Az</strong>: cos A = (sin δ − sin φ sin a) / (cos φ cos a)</p>
+        <p class="mt-2 text-xs text-gray-600">φ = latitude, a = altitude, A = azimuth, δ = declination</p>
+      </div>
+    </details>
+  </div>
+
+  <script>
+    const D2R = Math.PI / 180;
+    const R2D = 180 / Math.PI;
+
+    function mod24(h) { return ((h % 24) + 24) % 24; }
+    function mod360(d) { return ((d % 360) + 360) % 360; }
+    function formatHMS(h) {
+      const sign = h < 0 ? '-' : '';
+      const ah = Math.abs(h);
+      const hh = Math.floor(ah);
+      const mm = Math.floor((ah - hh) * 60);
+      const ss = ((ah - hh) * 3600 - mm * 60).toFixed(2);
+      return sign + String(hh).padStart(2,'0') + 'h ' + String(mm).padStart(2,'0') + 'm ' + String(ss).padStart(5,'0') + 's';
+    }
+    function formatDMS(d) {
+      const sign = d < 0 ? '-' : '+';
+      const ad = Math.abs(d);
+      const dd = Math.floor(ad);
+      const mm = Math.floor((ad - dd) * 60);
+      const ss = ((ad - dd) * 3600 - mm * 60).toFixed(1);
+      return sign + String(dd).padStart(2,'0') + '° ' + String(mm).padStart(2,'0') + "' " + String(ss).padStart(4,'0') + '"';
+    }
+
+    // Julian Date from UTC datetime-local value (YYYY-MM-DDTHH:MM)
+    function toJD(dtStr) {
+      const dt = new Date(dtStr + ':00Z');
+      return dt.getTime() / 86400000 + 2440587.5;
+    }
+
+    // Greenwich Mean Sidereal Time (hours) from JD
+    function gmst(jd) {
+      const T = (jd - 2451545.0) / 36525.0;
+      let g = 6.697375 + 2400.0513368 * T + 0.0000258622 * T * T;
+      // Add fractional day portion
+      const utHours = ((jd + 0.5) % 1) * 24;
+      g += utHours * 1.00273790935;
+      return mod24(g);
+    }
+
+    function lst(jd, lonDeg) {
+      return mod24(gmst(jd) + lonDeg / 15);
+    }
+
+    function altazToRaDec(altDeg, azDeg, latDeg, jd, lonDeg) {
+      const a = altDeg * D2R;
+      const A = azDeg * D2R;
+      const phi = latDeg * D2R;
+
+      const sinDec = Math.sin(phi) * Math.sin(a) + Math.cos(phi) * Math.cos(a) * Math.cos(A);
+      const decRad = Math.asin(Math.clamp ? Math.clamp(sinDec, -1, 1) : Math.max(-1, Math.min(1, sinDec)));
+      const decDeg = decRad * R2D;
+
+      const cosPhi = Math.cos(phi);
+      const cosDec = Math.cos(decRad);
+      let cosH = (Math.sin(a) - Math.sin(phi) * sinDec) / (cosPhi * cosDec);
+      cosH = Math.max(-1, Math.min(1, cosH));
+      let H = Math.acos(cosH) * R2D / 15; // in hours
+
+      // Determine sign of H from azimuth
+      const sinA = Math.sin(A);
+      if (sinA > 0) H = -H; // A east of south → H negative (east)
+
+      const lstHours = lst(jd, lonDeg);
+      let ra = mod24(lstHours - H);
+
+      return { ra, dec: decDeg, ha: H, lst: lstHours };
+    }
+
+    function raDecToAltAz(raHours, decDeg, latDeg, jd, lonDeg) {
+      const phi = latDeg * D2R;
+      const delta = decDeg * D2R;
+      const lstHours = lst(jd, lonDeg);
+      let H = lstHours - raHours;
+      // Normalize to -12..+12
+      H = ((H + 12) % 24 + 24) % 24 - 12;
+      const Hrad = H * 15 * D2R;
+
+      const sinAlt = Math.sin(phi) * Math.sin(delta) + Math.cos(phi) * Math.cos(delta) * Math.cos(Hrad);
+      const altRad = Math.asin(Math.max(-1, Math.min(1, sinAlt)));
+      const altDeg = altRad * R2D;
+
+      const cosAlt = Math.cos(altRad);
+      let cosAz = (Math.sin(delta) - Math.sin(phi) * sinAlt) / (Math.cos(phi) * cosAlt);
+      cosAz = Math.max(-1, Math.min(1, cosAz));
+      let azDeg = Math.acos(cosAz) * R2D;
+      if (Math.sin(Hrad) > 0) azDeg = 360 - azDeg;
+
+      return { alt: altDeg, az: azDeg, ha: H, lst: lstHours };
+    }
+
+    // ── UI Logic ──────────────────────────────────────────────────────────────
+    let mode = 'altaz'; // 'altaz' or 'radec'
+
+    document.getElementById('mode-altaz').addEventListener('click', () => setMode('altaz'));
+    document.getElementById('mode-radec').addEventListener('click', () => setMode('radec'));
+
+    function setMode(m) {
+      mode = m;
+      document.getElementById('panel-altaz').classList.toggle('hidden', m !== 'altaz');
+      document.getElementById('panel-radec').classList.toggle('hidden', m !== 'radec');
+      const btnAltaz = document.getElementById('mode-altaz');
+      const btnRaDec = document.getElementById('mode-radec');
+      btnAltaz.classList.toggle('bg-indigo-700', m === 'altaz');
+      btnAltaz.classList.toggle('border-indigo-400', m === 'altaz');
+      btnAltaz.classList.toggle('bg-gray-800', m !== 'altaz');
+      btnAltaz.classList.toggle('border-gray-700', m !== 'altaz');
+      btnAltaz.classList.toggle('text-white', m === 'altaz');
+      btnAltaz.classList.toggle('text-gray-300', m !== 'altaz');
+      btnAltaz.setAttribute('aria-pressed', String(m === 'altaz'));
+      btnRaDec.classList.toggle('bg-indigo-700', m === 'radec');
+      btnRaDec.classList.toggle('border-indigo-400', m === 'radec');
+      btnRaDec.classList.toggle('bg-gray-800', m !== 'radec');
+      btnRaDec.classList.toggle('border-gray-700', m !== 'radec');
+      btnRaDec.classList.toggle('text-white', m === 'radec');
+      btnRaDec.classList.toggle('text-gray-300', m !== 'radec');
+      btnRaDec.setAttribute('aria-pressed', String(m === 'radec'));
+    }
+
+    function showError(msg) {
+      const el = document.getElementById('error-msg');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+    }
+    function clearError() {
+      document.getElementById('error-msg').classList.add('hidden');
+    }
+
+    document.getElementById('btn-convert').addEventListener('click', () => {
+      clearError();
+      try {
+        const lat = parseFloat(document.getElementById('lat').value);
+        const lon = parseFloat(document.getElementById('lon').value);
+        const dtStr = document.getElementById('utc-dt').value;
+
+        if (isNaN(lat) || lat < -90 || lat > 90) { showError('Latitude must be between −90 and +90.'); return; }
+        if (isNaN(lon) || lon < -180 || lon > 180) { showError('Longitude must be between −180 and +180.'); return; }
+        if (!dtStr) { showError('Please enter a UTC date/time.'); return; }
+
+        const jd = toJD(dtStr);
+        const lstHours = lst(jd, lon);
+
+        let result;
+        if (mode === 'altaz') {
+          const alt = parseFloat(document.getElementById('alt').value);
+          const az = parseFloat(document.getElementById('az').value);
+          if (isNaN(alt) || alt < -90 || alt > 90) { showError('Altitude must be between −90 and +90.'); return; }
+          if (isNaN(az) || az < 0 || az > 360) { showError('Azimuth must be between 0 and 360.'); return; }
+          result = altazToRaDec(alt, az, lat, jd, lon);
+          result.inputAlt = alt;
+          result.inputAz = az;
+        } else {
+          const ra = parseFloat(document.getElementById('ra').value);
+          const dec = parseFloat(document.getElementById('dec').value);
+          if (isNaN(ra) || ra < 0 || ra > 24) { showError('RA must be between 0 and 24 hours.'); return; }
+          if (isNaN(dec) || dec < -90 || dec > 90) { showError('Declination must be between −90 and +90.'); return; }
+          result = raDecToAltAz(ra, dec, lat, jd, lon);
+          result.inputRa = ra;
+          result.inputDec = dec;
+        }
+
+        document.getElementById('res-lst').textContent = formatHMS(lstHours) + ' (' + lstHours.toFixed(5) + ' h)';
+        document.getElementById('res-ha').textContent = formatHMS(result.ha) + ' (' + result.ha.toFixed(5) + ' h)';
+
+        if (mode === 'altaz') {
+          document.getElementById('res-ra').textContent = formatHMS(result.ra) + ' (' + result.ra.toFixed(5) + ' h)';
+          document.getElementById('res-dec').textContent = formatDMS(result.dec) + ' (' + result.dec.toFixed(5) + '°)';
+          document.getElementById('res-alt').textContent = formatDMS(result.inputAlt) + ' (' + result.inputAlt.toFixed(5) + '°)';
+          document.getElementById('res-az').textContent = formatDMS(result.inputAz) + ' (' + result.inputAz.toFixed(5) + '°)';
+        } else {
+          document.getElementById('res-ra').textContent = formatHMS(result.inputRa) + ' (' + result.inputRa.toFixed(5) + ' h)';
+          document.getElementById('res-dec').textContent = formatDMS(result.inputDec) + ' (' + result.inputDec.toFixed(5) + '°)';
+          document.getElementById('res-alt').textContent = formatDMS(result.alt) + ' (' + result.alt.toFixed(5) + '°)';
+          document.getElementById('res-az').textContent = formatDMS(result.az) + ' (' + result.az.toFixed(5) + '°)';
+        }
+      } catch (e) {
+        showError('Calculation error: ' + e.message);
+      }
+    });
+
+    // Auto-convert on load
+    document.getElementById('btn-convert').click();
+  </script>
+</body>
+</html>
